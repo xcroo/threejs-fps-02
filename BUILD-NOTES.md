@@ -129,6 +129,6 @@ even while they can see an enemy.
 
 - `main.ts`, `serve.ts`, `README.md`, `BUILD-NOTES.md`, `LICENSE` (GPL-3.0-only),
   `.makefun/owner.json`
-- `game/index.html`, `game/src/*.js` (13 modules), `game/vendor/three/`
+- `game/index.html`, `game/src/*.js` (12 modules), `game/vendor/three/`
   (three.js 0.187.0, byte-for-byte per kit.json)
 - `screenshots/` (4 PNGs), `vendor/makefun-threejs.ts` (kit library, unchanged)
