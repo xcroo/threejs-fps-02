@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!-- Rewritten in session for the threejs-fps-02 entry (transcript coverage). -->
+<!-- Revised once after the first write: the rewrite note is now the first line after the doctype. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBERWORKS — Tactical FPS</title>
+<style>
+  :root {
+    --canvas: #191d26;
+    --surface: #333945;
+    --hairline: #232833;
+    --ink: #ece5d3;
+    --muted: #8b94a3;
+    --accent: #ff9a2e;
+    --danger: #e0492f;
+    --ally: #3fae7a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--canvas); font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  #game { display: block; width: 100%; height: 100%; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: var(--ink); }
+  #crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
+  #crosshair::after { left: 0; top: 50%; width: 100%; height: 2px; transform: translateY(-50%); }
+  #hitmarker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(45deg); font-size: 26px; font-weight: bold; color: var(--ink); opacity: 0; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+  #damage { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; transform: translate(-50%, -50%); border: 10px solid transparent; border-top-color: var(--danger); border-radius: 50%; opacity: 0; }
+  #banner { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); font-size: 26px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+  #objective { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); font-size: 14px; color: var(--muted); text-shadow: 0 1px 4px rgba(0,0,0,0.9); white-space: nowrap; }
+  #hint { position: absolute; left: 50%; bottom: 24%; transform: translateX(-50%); font-size: 15px; color: var(--accent); text-shadow: 0 1px 4px rgba(0,0,0,0.9); white-space: nowrap; }
+  #progress { position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%); width: 220px; height: 8px; background: rgba(0,0,0,0.6); border: 1px solid var(--hairline); display: none; }
+  #progress-bar { height: 100%; width: 0%; background: var(--accent); }
+  #bottom-left { position: absolute; left: 20px; bottom: 18px; }
+  #health { font-size: 42px; font-weight: bold; line-height: 1; }
+  #health-bar { width: 180px; height: 6px; background: rgba(0,0,0,0.6); margin-top: 4px; }
+  #health-bar div { height: 100%; width: 100%; background: var(--ally); }
+  #health-label { font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+  #bottom-right { position: absolute; right: 20px; bottom: 18px; text-align: right; }
+  #ammo { font-size: 34px; font-weight: bold; line-height: 1; }
+  #weapon { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  #money { font-size: 20px; font-weight: bold; color: var(--accent); margin-top: 6px; }
+  #top-right { position: absolute; right: 20px; top: 16px; text-align: right; }
+  #timer { font-size: 30px; font-weight: bold; }
+  #score { font-size: 20px; font-weight: bold; color: var(--accent); }
+  #round { font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+  #minimap { position: absolute; left: 20px; top: 16px; width: 180px; height: 180px; border: 1px solid var(--hairline); background: rgba(20,22,26,0.85); }
+  #killfeed { position: absolute; right: 20px; top: 110px; text-align: right; font-size: 13px; }
+  #killfeed .kill { margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.9); }
+  #buy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; background: rgba(20,22,26,0.94); border: 1px solid var(--hairline); padding: 18px 20px; display: none; }
+  #buy h2 { font-size: 16px; letter-spacing: 2px; margin-bottom: 10px; color: var(--accent); }
+  #buy-list .buy-row { display: flex; gap: 10px; padding: 5px 0; font-size: 14px; border-bottom: 1px solid var(--hairline); }
+  #buy-list .buy-key { display: inline-block; width: 18px; height: 18px; text-align: center; line-height: 18px; background: var(--surface); border-radius: 3px; font-size: 12px; color: var(--accent); }
+  #buy p { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  #overlay { position: fixed; inset: 0; background: rgba(16,18,22,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; cursor: pointer; text-align: center; padding: 20px; }
+  #overlay-title { font-size: 52px; font-weight: bold; letter-spacing: 6px; color: var(--accent); }
+  #overlay-body { font-size: 16px; color: var(--ink); margin-top: 14px; max-width: 560px; line-height: 1.6; }
+  #overlay .keys { font-size: 13px; color: var(--muted); margin-top: 22px; line-height: 1.9; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <canvas id="minimap" width="180" height="180"></canvas>
+  <div id="objective"></div>
+  <div id="banner"></div>
+  <div id="hint"></div>
+  <div id="progress"><div id="progress-bar"></div></div>
+  <div id="crosshair"></div>
+  <div id="hitmarker">✕</div>
+  <div id="damage"></div>
+  <div id="bottom-left">
+    <div id="health-label">HEALTH</div>
+    <div id="health">100</div>
+    <div id="health-bar"><div id="health-bar-fill"></div></div>
+  </div>
+  <div id="bottom-right">
+    <div id="ammo">12 / 96</div>
+    <div id="weapon">P9 Sidearm</div>
+    <div id="money">$800</div>
+  </div>
+  <div id="top-right">
+    <div id="timer">2:00</div>
+    <div id="score">0 : 0</div>
+    <div id="round">ROUND 1</div>
+  </div>
+  <div id="killfeed"></div>
+  <div id="buy">
+    <h2>BUY MENU — press B to close</h2>
+    <div id="buy-list"></div>
+    <p>Press a number key to buy. Weapons stay with you between rounds; reserve ammo refills each round.</p>
+  </div>
+</div>
+<div id="overlay">
+  <div id="overlay-title">EMBERWORKS</div>
+  <div id="overlay-body">A tactical FPS at a decommissioned power station. Plant the charge at Site A or B — first to 5 rounds wins.</div>
+  <div class="keys">
+    WASD move · Mouse look · Click shoot · R reload · 1–5 weapons · B buy · E plant · G HE grenade · H smoke · C / Ctrl crouch · Space jump · Shift walk
+  </div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
